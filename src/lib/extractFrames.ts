@@ -44,26 +44,36 @@ export function loadVideo(file: File): Promise<{ video: HTMLVideoElement; url: s
       );
 
     video.addEventListener('error', onError, { once: true });
-    video.addEventListener(
-      'loadedmetadata',
-      () => {
-        if (!isFinite(video.duration) || video.duration <= 0) {
-          reject(new Error('Could not read a valid duration from this clip.'));
-          return;
-        }
-        resolve({
-          video,
-          url,
-          info: {
-            fileName: file.name,
-            durationSec: video.duration,
-            width: video.videoWidth,
-            height: video.videoHeight,
-          },
-        });
-      },
-      { once: true },
-    );
+
+    const onLoadedData = () => {
+      if (!isFinite(video.duration) || video.duration <= 0) {
+        reject(new Error('Could not read a valid duration from this clip.'));
+        return;
+      }
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        reject(
+          new Error(
+            'This video\'s codec is not supported by your browser. MOV files with HEVC or ProRes only work in Safari. Try re-exporting as MP4 (H.264) or WebM, or open this page in Safari.',
+          ),
+        );
+        return;
+      }
+      resolve({
+        video,
+        url,
+        info: {
+          fileName: file.name,
+          durationSec: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+        },
+      });
+    };
+
+    // loadeddata fires when the first frame has been decoded and is renderable.
+    // loadedmetadata only reads the container — videoWidth/Height may still be 0
+    // for unsupported codecs (e.g. HEVC MOV in Chrome).
+    video.addEventListener('loadeddata', onLoadedData, { once: true });
   });
 }
 
