@@ -17,7 +17,8 @@
  * with HEVC/ProRes may fail on non-Safari browsers — the error message guides
  * users to re-export if needed.
  *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-06-29 — Fix: remove crossOrigin (taints canvas on blob
+ *   URLs), cap capture resolution at 1920px max edge, add toDataURL fallback.
  * -----------------------------------------------------------------------------
  */
 
@@ -31,7 +32,8 @@ export function loadVideo(file: File): Promise<{ video: HTMLVideoElement; url: s
     video.preload = 'auto';
     video.muted = true;
     video.playsInline = true;
-    video.crossOrigin = 'anonymous';
+    // Do NOT set crossOrigin — blob URLs are same-origin and setting it can
+    // taint the canvas in some browsers, causing toBlob to return null.
     video.src = url;
 
     const onError = () =>
@@ -101,10 +103,28 @@ function mimeFor(format: ImageFormat): string {
   return format === 'jpeg' ? 'image/jpeg' : 'image/png';
 }
 
+/** Max edge for capture — prevents memory exhaustion on 4K+ sources. */
+const MAX_CAPTURE_EDGE = 1920;
+
 function canvasToBlob(canvas: HTMLCanvasElement, format: ImageFormat, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Failed to encode frame.'))),
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+          return;
+        }
+        // Fallback: toDataURL → Blob conversion (works even when toBlob fails)
+        try {
+          const dataUrl = canvas.toDataURL(mimeFor(format), format === 'jpeg' ? quality : undefined);
+          const byteString = atob(dataUrl.split(',')[1]);
+          const arr = new Uint8Array(byteString.length);
+          for (let i = 0; i < byteString.length; i++) arr[i] = byteString.charCodeAt(i);
+          resolve(new Blob([arr], { type: mimeFor(format) }));
+        } catch {
+          reject(new Error('Failed to encode frame. The video may use an unsupported codec or the browser cannot allocate memory for this resolution.'));
+        }
+      },
       mimeFor(format),
       format === 'jpeg' ? quality : undefined,
     );
@@ -131,8 +151,13 @@ export async function extractFrames(
   const timestamps = computeTimestamps(durationSec, count);
 
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  // Cap capture resolution to prevent memory exhaustion on high-res sources.
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (vw === 0 || vh === 0) throw new Error('Video has no decodable dimensions — codec may be unsupported.');
+  const scale = Math.min(1, MAX_CAPTURE_EDGE / Math.max(vw, vh));
+  canvas.width = Math.round(vw * scale);
+  canvas.height = Math.round(vh * scale);
   const ctx = canvas.getContext('2d', { willReadFrequently: false });
   if (!ctx) throw new Error('Canvas 2D context unavailable in this browser.');
 
