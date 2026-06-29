@@ -12,9 +12,10 @@
  *    captures; otherwise we fall back to the `seeked` event.
  *  - Capture is at native resolution; downscaling is the contact sheet's job.
  *
- * Codec note: relies on the browser's native <video> decoder (MP4/H.264, WebM).
- * MOV/HEVC/ProRes support varies by browser; an ffmpeg.wasm fallback is a
- * planned Phase 2 addition.
+ * Codec note: relies on the browser's native <video> decoder. MP4/H.264 and
+ * WebM are universally supported. MOV (H.264) works in most browsers; MOV
+ * with HEVC/ProRes may fail on non-Safari browsers — the error message guides
+ * users to re-export if needed.
  *
  * Last updated: 2026-06-29 — Initial creation.
  * -----------------------------------------------------------------------------

@@ -2,10 +2,12 @@
  * App.tsx
  * -----------------------------------------------------------------------------
  * Top-level UI shell for VisionStruct FrameKit. Wires the Dropzone, Controls,
- * ProgressBar and PreviewGrid to the useFrameKit pipeline hook, and owns the
- * editable settings state. Composition only — no processing logic lives here.
+ * ProgressBar, GifPreview and PreviewGrid to the useFrameKit pipeline hook, and
+ * owns the editable settings state. Composition only — no processing logic
+ * lives here.
  *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-06-29 — Added GifPreview, pass file to Dropzone for video
+ *   preview, updated footer for MOV support.
  * -----------------------------------------------------------------------------
  */
 
@@ -15,6 +17,7 @@ import { Dropzone } from './components/Dropzone';
 import { Controls } from './components/Controls';
 import { ProgressBar } from './components/ProgressBar';
 import { PreviewGrid } from './components/PreviewGrid';
+import { GifPreview } from './components/GifPreview';
 import { useFrameKit } from './hooks/useFrameKit';
 import { DEFAULT_SETTINGS, type FrameKitSettings } from './types';
 
@@ -45,7 +48,7 @@ export default function App() {
         </header>
 
         <div className="space-y-6 rounded-2xl border border-edge bg-panel p-5 sm:p-6">
-          <Dropzone info={info} disabled={busy} onFile={onFile} />
+          <Dropzone info={info} file={file} disabled={busy} onFile={onFile} />
 
           <Controls settings={settings} disabled={busy} onChange={patch} />
 
@@ -71,12 +74,18 @@ export default function App() {
           <ProgressBar progress={progress} />
         </div>
 
+        {frames.length > 0 && (
+          <div className="mt-6 rounded-2xl border border-edge bg-panel p-5 sm:p-6">
+            <GifPreview frames={frames} />
+          </div>
+        )}
+
         <div className="mt-8">
           <PreviewGrid frames={frames} sheets={sheets} />
         </div>
 
         <footer className="mt-12 text-center text-xs text-slate-500">
-          Runs entirely in your browser — clips are never uploaded. MP4 (H.264) / WebM recommended.
+          Runs entirely in your browser — clips are never uploaded. MP4 · MOV · WebM supported.
         </footer>
       </div>
     </div>
