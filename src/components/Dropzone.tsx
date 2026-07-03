@@ -44,12 +44,25 @@ export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
     setInputMode('images');
   }, [files]);
 
+  const isImage = (f: File) => {
+    if (f.type.startsWith('image/')) return true;
+    // Fallback: check extension if MIME type is missing/empty
+    const ext = f.name.split('.').pop()?.toLowerCase();
+    return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp' || ext === 'gif';
+  };
+
+  const isVideo = (f: File) => {
+    if (f.type.startsWith('video/')) return true;
+    const ext = f.name.split('.').pop()?.toLowerCase();
+    return ext === 'mp4' || ext === 'webm' || ext === 'mov';
+  };
+
   const handleFiles = useCallback(
     (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return;
       const arr = Array.from(fileList);
-      const videos = arr.filter((f) => f.type.startsWith('video/'));
-      const images = arr.filter((f) => f.type.startsWith('image/'));
+      const videos = arr.filter(isVideo);
+      const images = arr.filter(isImage);
       if (videos.length > 0) {
         onFiles([videos[0]]);
       } else if (images.length > 0) {
