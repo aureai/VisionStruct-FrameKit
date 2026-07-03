@@ -22,15 +22,22 @@ import { useFrameKit } from './hooks/useFrameKit';
 import { DEFAULT_SETTINGS, type FrameKitSettings } from './types';
 
 export default function App() {
-  const { info, frames, sheets, progress, run, downloadZip } = useFrameKit();
-  const [file, setFile] = useState<File | null>(null);
+  const { info, frames, sheets, progress, run, runFromImages, downloadZip } = useFrameKit();
+  const [files, setFiles] = useState<File[]>([]);
   const [settings, setSettings] = useState<FrameKitSettings>(DEFAULT_SETTINGS);
 
   const busy = progress.phase === 'loading' || progress.phase === 'extracting' || progress.phase === 'composing' || progress.phase === 'packaging';
 
-  const onFile = useCallback((f: File) => setFile(f), []);
+  const onFiles = useCallback((f: File[]) => setFiles(f), []);
   const patch = useCallback((p: Partial<FrameKitSettings>) => setSettings((s) => ({ ...s, ...p })), []);
-  const onGenerate = useCallback(() => file && run(file, settings), [file, settings, run]);
+  const onGenerate = useCallback(() => {
+    if (files.length === 0) return;
+    if (files.length === 1 && files[0].type.startsWith('video/')) {
+      run(files[0], settings);
+    } else {
+      runFromImages(files, settings);
+    }
+  }, [files, settings, run, runFromImages]);
 
   return (
     <div className="min-h-screen bg-ink text-slate-100">
@@ -48,14 +55,14 @@ export default function App() {
         </header>
 
         <div className="space-y-6 rounded-2xl border border-edge bg-panel p-5 sm:p-6">
-          <Dropzone info={info} file={file} disabled={busy} onFile={onFile} />
+          <Dropzone info={info} files={files} disabled={busy} onFiles={onFiles} />
 
           <Controls settings={settings} disabled={busy} onChange={patch} />
 
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={onGenerate}
-              disabled={!file || busy}
+              disabled={files.length === 0 || busy}
               className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Wand2 className="h-4 w-4" />

@@ -2,16 +2,17 @@
  * useFrameKit.ts
  * -----------------------------------------------------------------------------
  * Orchestration hook for the FrameKit pipeline. Owns the lifecycle of a loaded
- * clip: load -> extract frames -> compose contact sheets -> (on demand) package
- * a ZIP. Centralizes progress state and is responsible for revoking object URLs
- * to avoid memory leaks across re-runs.
+ * clip or image set: load -> extract frames (or load images) -> compose contact
+ * sheets -> (on demand) package a ZIP. Centralizes progress state and is
+ * responsible for revoking object URLs to avoid memory leaks across re-runs.
  *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-07-03 — Added runFromImages for multi-image input mode.
  * -----------------------------------------------------------------------------
  */
 
 import { useCallback, useRef, useState } from 'react';
 import { extractFrames, loadVideo } from '../lib/extractFrames';
+import { loadImagesAsFrames } from '../lib/loadImages';
 import { buildContactSheets } from '../lib/contactSheet';
 import { buildAndDownloadZip } from '../lib/packageZip';
 import type { CapturedFrame, ClipInfo, ContactSheet, FrameKitSettings, ProgressState } from '../types';
@@ -116,5 +117,46 @@ export function useFrameKit() {
     }
   }, [info, frames, sheets]);
 
-  return { info, frames, sheets, progress, run, reset, downloadZip };
+  const runFromImages = useCallback(
+    async (files: File[], settings: FrameKitSettings) => {
+      revokeAll();
+      setFrames([]);
+      setSheets([]);
+
+      try {
+        setProgress({ phase: 'loading', current: 0, total: files.length, message: `Loading ${files.length} images…` });
+        const loadedFrames = await loadImagesAsFrames(files);
+
+        // Synthetic ClipInfo for image mode
+        const syntheticInfo: ClipInfo = {
+          fileName: `${files.length} images`,
+          durationSec: (files.length - 1) * 0.5, // Synthetic: 0.5s per frame
+          width: loadedFrames[0]?.width || 0,
+          height: loadedFrames[0]?.height || 0,
+        };
+        setInfo(syntheticInfo);
+
+        setProgress({ phase: 'composing', current: 0, total: 0, message: 'Composing contact sheet…' });
+        const builtSheets = await buildContactSheets(loadedFrames, {
+          columns: settings.sheetColumns,
+          tileMaxEdge: settings.tileMaxEdge,
+          maxFramesPerSheet: settings.maxFramesPerSheet,
+          clipName: syntheticInfo.fileName,
+          durationSec: syntheticInfo.durationSec,
+        });
+
+        urlsRef.current.push(...loadedFrames.map((f) => f.url), ...builtSheets.map((s) => s.url));
+
+        setFrames(loadedFrames);
+        setSheets(builtSheets);
+        setProgress({ phase: 'done', current: loadedFrames.length, total: loadedFrames.length, message: 'Done' });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unexpected error during image processing.';
+        setProgress({ phase: 'error', current: 0, total: 0, message });
+      }
+    },
+    [revokeAll],
+  );
+
+  return { info, frames, sheets, progress, run, runFromImages, reset, downloadZip };
 }
