@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { UploadCloud, CheckCircle2, RefreshCw } from 'lucide-react';
+import { isImage, isVideo } from '../lib/fileType';
 import type { ClipInfo } from '../types';
 
 const ACCEPTED = 'video/mp4,video/webm,video/quicktime,video/mov,video/*,image/jpeg,image/png,image/webp';
@@ -43,19 +44,6 @@ export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
     setPreviewUrl(null);
     setInputMode('images');
   }, [files]);
-
-  const isImage = (f: File) => {
-    if (f.type.startsWith('image/')) return true;
-    // Fallback: check extension if MIME type is missing/empty
-    const ext = f.name.split('.').pop()?.toLowerCase();
-    return ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp' || ext === 'gif';
-  };
-
-  const isVideo = (f: File) => {
-    if (f.type.startsWith('video/')) return true;
-    const ext = f.name.split('.').pop()?.toLowerCase();
-    return ext === 'mp4' || ext === 'webm' || ext === 'mov';
-  };
 
   const handleFiles = useCallback(
     (fileList: FileList | null) => {

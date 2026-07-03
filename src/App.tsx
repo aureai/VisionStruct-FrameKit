@@ -18,6 +18,7 @@ import { ProgressBar } from './components/ProgressBar';
 import { PreviewGrid } from './components/PreviewGrid';
 import { GifPreview } from './components/GifPreview';
 import { useFrameKit } from './hooks/useFrameKit';
+import { isVideo } from './lib/fileType';
 import { DEFAULT_SETTINGS, type FrameKitSettings } from './types';
 
 export default function App() {
@@ -32,14 +33,14 @@ export default function App() {
 
   // Auto-set sheetFrameCount to match uploaded image count (image mode only)
   useEffect(() => {
-    if (files.length > 1 && !files[0]?.type.startsWith('video/')) {
+    if (files.length > 0 && !isVideo(files[0])) {
       setSettings((s) => ({ ...s, sheetFrameCount: files.length }));
     }
   }, [files]);
 
   const onGenerate = useCallback(() => {
     if (files.length === 0) return;
-    if (files.length === 1 && files[0].type.startsWith('video/')) {
+    if (files.length === 1 && isVideo(files[0])) {
       run(files[0], settings);
     } else {
       runFromImages(files, settings);
