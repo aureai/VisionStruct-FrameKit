@@ -6,12 +6,11 @@
  * owns the editable settings state. Composition only — no processing logic
  * lives here.
  *
- * Last updated: 2026-06-29 — Added GifPreview, pass file to Dropzone for video
- *   preview, updated footer for MOV support.
+ * Last updated: 2026-07-03 — Auto-set sheetFrameCount when images are loaded.
  * -----------------------------------------------------------------------------
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Download, Sparkles, Wand2 } from 'lucide-react';
 import { Dropzone } from './components/Dropzone';
 import { Controls } from './components/Controls';
@@ -30,6 +29,14 @@ export default function App() {
 
   const onFiles = useCallback((f: File[]) => setFiles(f), []);
   const patch = useCallback((p: Partial<FrameKitSettings>) => setSettings((s) => ({ ...s, ...p })), []);
+
+  // Auto-set sheetFrameCount to match uploaded image count (image mode only)
+  useEffect(() => {
+    if (files.length > 1 && !files[0]?.type.startsWith('video/')) {
+      setSettings((s) => ({ ...s, sheetFrameCount: files.length }));
+    }
+  }, [files]);
+
   const onGenerate = useCallback(() => {
     if (files.length === 0) return;
     if (files.length === 1 && files[0].type.startsWith('video/')) {

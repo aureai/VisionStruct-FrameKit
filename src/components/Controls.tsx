@@ -53,7 +53,7 @@ export function Controls({ settings, disabled, onChange }: ControlsProps) {
         label="Sequence frames"
         value={settings.sequenceCount}
         min={1}
-        max={15}
+        max={40}
         disabled={disabled}
         onChange={(v) => onChange({ sequenceCount: v })}
       />
