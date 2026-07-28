@@ -62,6 +62,51 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
     };
   }, []);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || disabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't interfere if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          // Step back 1 frame (assuming 30fps = ~0.033s)
+          video.currentTime = Math.max(0, video.currentTime - 0.033);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          // Step forward 1 frame
+          video.currentTime = Math.min(video.duration, video.currentTime + 0.033);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          // Jump forward 1 second
+          video.currentTime = Math.min(video.duration, video.currentTime + 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          // Jump back 1 second
+          video.currentTime = Math.max(0, video.currentTime - 1);
+          break;
+        case ' ':
+          e.preventDefault();
+          // Toggle play/pause
+          if (video.paused) {
+            video.play();
+          } else {
+            video.pause();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [disabled]);
+
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;

@@ -37,6 +37,10 @@ No environment variables or server functions are required.
 - View thumbnail previews of all saved frames in a grid
 - Edit timestamps inline by clicking the edit icon
 - Remove saved frames from the list
+- Use keyboard controls:
+  - **Left/Right arrows**: step 1 frame (~0.033s)
+  - **Up/Down arrows**: jump 1 second
+  - **Space**: play/pause
 - Max 40 frames
 
 Both modes produce the same ZIP structure with high-res frames + contact sheet.
