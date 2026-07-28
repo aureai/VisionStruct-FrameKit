@@ -27,6 +27,7 @@ export default function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [settings, setSettings] = useState<FrameKitSettings>(DEFAULT_SETTINGS);
   const [savedFrames, setSavedFrames] = useState<SavedFrame[]>([]);
+  const [manualVideoUrl, setManualVideoUrl] = useState<string | null>(null);
 
   const busy = progress.phase === 'loading' || progress.phase === 'extracting' || progress.phase === 'composing' || progress.phase === 'packaging';
   const isVideoFile = files.length === 1 && isVideo(files[0]);
@@ -38,6 +39,18 @@ export default function App() {
   }, []);
 
   const patch = useCallback((p: Partial<FrameKitSettings>) => setSettings((s) => ({ ...s, ...p })), []);
+
+  // Stable blob URL for ManualPicker — create once per file, revoke on change/unmount.
+  // (Calling createObjectURL inline in JSX leaked a URL on every render.)
+  useEffect(() => {
+    if (!isVideoFile || !isManualMode || !files[0]) {
+      setManualVideoUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(files[0]);
+    setManualVideoUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [files, isVideoFile, isManualMode]);
 
   // Auto-set sheetFrameCount to match uploaded image count (image mode only)
   useEffect(() => {
@@ -57,17 +70,20 @@ export default function App() {
   }, [files, settings, savedFrames, isManualMode, run, runFromImages]);
 
   const onAddFrame = useCallback((time: number, thumbnailUrl: string) => {
-    setSavedFrames((prev) => [...prev, { time, thumbnailUrl }]);
+    const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `frame-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setSavedFrames((prev) => [...prev, { id, time, thumbnailUrl }]);
   }, []);
 
-  const onUpdateFrame = useCallback((oldTime: number, newTime: number) => {
+  const onUpdateFrame = useCallback((id: string, newTime: number, thumbnailUrl: string) => {
     setSavedFrames((prev) =>
-      prev.map((f) => (f.time === oldTime ? { ...f, time: newTime } : f))
+      prev.map((f) => (f.id === id ? { ...f, time: newTime, thumbnailUrl } : f))
     );
   }, []);
 
-  const onRemoveFrame = useCallback((time: number) => {
-    setSavedFrames((prev) => prev.filter((f) => f.time !== time));
+  const onRemoveFrame = useCallback((id: string) => {
+    setSavedFrames((prev) => prev.filter((f) => f.id !== id));
   }, []);
 
   const canGenerate = files.length > 0 && (!isManualMode || savedFrames.length > 0);
@@ -92,9 +108,9 @@ export default function App() {
 
           <Controls settings={settings} disabled={busy} onChange={patch} />
 
-          {isVideoFile && isManualMode && files[0] && (
+          {isVideoFile && isManualMode && manualVideoUrl && (
             <ManualPicker
-              videoUrl={URL.createObjectURL(files[0])}
+              videoUrl={manualVideoUrl}
               savedFrames={savedFrames}
               disabled={busy}
               onAddFrame={onAddFrame}

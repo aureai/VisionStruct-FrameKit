@@ -171,9 +171,12 @@ export async function extractFramesAtTimes(
   if (!ctx) throw new Error('Canvas 2D context unavailable in this browser.');
 
   const frames: CapturedFrame[] = [];
+  const durationSec = isFinite(video.duration) ? video.duration : 0;
+  const clampTime = (t: number) =>
+    Math.min(Math.max(t, 0.001), Math.max(durationSec - 0.001, 0));
 
   for (let i = 0; i < timestamps.length; i++) {
-    const time = timestamps[i];
+    const time = clampTime(timestamps[i]);
     await seekTo(video, time);
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const blob = await canvasToBlob(canvas, format, jpegQuality);

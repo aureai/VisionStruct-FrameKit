@@ -75,6 +75,8 @@ export interface ProgressState {
 
 /** A manually saved frame with timestamp and thumbnail preview. */
 export interface SavedFrame {
+  /** Stable id for React keys (survives timestamp edits). */
+  id: string;
   time: number;
   thumbnailUrl: string;
 }
