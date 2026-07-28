@@ -20,13 +20,13 @@ import { GifPreview } from './components/GifPreview';
 import { ManualPicker } from './components/ManualPicker';
 import { useFrameKit } from './hooks/useFrameKit';
 import { isVideo } from './lib/fileType';
-import { DEFAULT_SETTINGS, type FrameKitSettings } from './types';
+import { DEFAULT_SETTINGS, type FrameKitSettings, type SavedFrame } from './types';
 
 export default function App() {
   const { info, frames, sheets, progress, run, runFromImages, downloadZip } = useFrameKit();
   const [files, setFiles] = useState<File[]>([]);
   const [settings, setSettings] = useState<FrameKitSettings>(DEFAULT_SETTINGS);
-  const [selectedTimes, setSelectedTimes] = useState<number[]>([]);
+  const [savedFrames, setSavedFrames] = useState<SavedFrame[]>([]);
 
   const busy = progress.phase === 'loading' || progress.phase === 'extracting' || progress.phase === 'composing' || progress.phase === 'packaging';
   const isVideoFile = files.length === 1 && isVideo(files[0]);
@@ -34,7 +34,7 @@ export default function App() {
 
   const onFiles = useCallback((f: File[]) => {
     setFiles(f);
-    setSelectedTimes([]); // Clear selected times when file changes
+    setSavedFrames([]); // Clear saved frames when file changes
   }, []);
 
   const patch = useCallback((p: Partial<FrameKitSettings>) => setSettings((s) => ({ ...s, ...p })), []);
@@ -49,21 +49,28 @@ export default function App() {
   const onGenerate = useCallback(() => {
     if (files.length === 0) return;
     if (files.length === 1 && isVideo(files[0])) {
-      run(files[0], settings, isManualMode ? selectedTimes : undefined);
+      const times = isManualMode ? savedFrames.map((f) => f.time) : undefined;
+      run(files[0], settings, times);
     } else {
       runFromImages(files, settings);
     }
-  }, [files, settings, selectedTimes, isManualMode, run, runFromImages]);
+  }, [files, settings, savedFrames, isManualMode, run, runFromImages]);
 
-  const onAddTime = useCallback((time: number) => {
-    setSelectedTimes((prev) => [...prev, time]);
+  const onAddFrame = useCallback((time: number, thumbnailUrl: string) => {
+    setSavedFrames((prev) => [...prev, { time, thumbnailUrl }]);
   }, []);
 
-  const onRemoveTime = useCallback((time: number) => {
-    setSelectedTimes((prev) => prev.filter((t) => t !== time));
+  const onUpdateFrame = useCallback((oldTime: number, newTime: number) => {
+    setSavedFrames((prev) =>
+      prev.map((f) => (f.time === oldTime ? { ...f, time: newTime } : f))
+    );
   }, []);
 
-  const canGenerate = files.length > 0 && (!isManualMode || selectedTimes.length > 0);
+  const onRemoveFrame = useCallback((time: number) => {
+    setSavedFrames((prev) => prev.filter((f) => f.time !== time));
+  }, []);
+
+  const canGenerate = files.length > 0 && (!isManualMode || savedFrames.length > 0);
 
   return (
     <div className="min-h-screen bg-ink text-slate-100">
@@ -88,10 +95,11 @@ export default function App() {
           {isVideoFile && isManualMode && files[0] && (
             <ManualPicker
               videoUrl={URL.createObjectURL(files[0])}
-              selectedTimes={selectedTimes}
+              savedFrames={savedFrames}
               disabled={busy}
-              onAddTime={onAddTime}
-              onRemoveTime={onRemoveTime}
+              onAddFrame={onAddFrame}
+              onUpdateFrame={onUpdateFrame}
+              onRemoveFrame={onRemoveFrame}
             />
           )}
 

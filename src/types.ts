@@ -73,6 +73,12 @@ export interface ProgressState {
   message: string;
 }
 
+/** A manually saved frame with timestamp and thumbnail preview. */
+export interface SavedFrame {
+  time: number;
+  thumbnailUrl: string;
+}
+
 export const DEFAULT_SETTINGS: FrameKitSettings = {
   extractionMode: 'even',
   sequenceCount: 12,

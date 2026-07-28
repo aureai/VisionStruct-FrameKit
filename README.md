@@ -32,8 +32,10 @@ No environment variables or server functions are required.
 **Even (default)** — Automatically samples frames at evenly-spaced timestamps across the clip. Great for quick analysis of entire clips.
 
 **Manual** — Drop a video, scrub through the player, and save specific frames. You can:
-- Click **Save frame** to capture the current timestamp
+- Click **Save frame** to capture the current timestamp with a thumbnail preview
 - Type a specific timestamp (in seconds) and click **Add**
+- View thumbnail previews of all saved frames in a grid
+- Edit timestamps inline by clicking the edit icon
 - Remove saved frames from the list
 - Max 40 frames
 
