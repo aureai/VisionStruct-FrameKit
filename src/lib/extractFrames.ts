@@ -149,16 +149,15 @@ export interface ExtractOptions {
 }
 
 /**
- * Extract `count` evenly-spaced frames from a loaded video at native resolution.
+ * Extract frames from a loaded video at the specified timestamps.
  * Returns CapturedFrame objects with preview object URLs (caller revokes them).
  */
-export async function extractFrames(
+export async function extractFramesAtTimes(
   video: HTMLVideoElement,
-  durationSec: number,
-  options: ExtractOptions,
+  timestamps: number[],
+  options: Omit<ExtractOptions, 'count'>,
 ): Promise<CapturedFrame[]> {
-  const { count, format, jpegQuality, onProgress } = options;
-  const timestamps = computeTimestamps(durationSec, count);
+  const { format, jpegQuality, onProgress } = options;
 
   const canvas = document.createElement('canvas');
   // Cap capture resolution to prevent memory exhaustion on high-res sources.
@@ -190,4 +189,18 @@ export async function extractFrames(
   }
 
   return frames;
+}
+
+/**
+ * Extract `count` evenly-spaced frames from a loaded video at native resolution.
+ * Returns CapturedFrame objects with preview object URLs (caller revokes them).
+ */
+export async function extractFrames(
+  video: HTMLVideoElement,
+  durationSec: number,
+  options: ExtractOptions,
+): Promise<CapturedFrame[]> {
+  const { count } = options;
+  const timestamps = computeTimestamps(durationSec, count);
+  return extractFramesAtTimes(video, timestamps, options);
 }

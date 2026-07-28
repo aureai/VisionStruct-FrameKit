@@ -47,61 +47,82 @@ function Slider(props: {
 }
 
 export function Controls({ settings, disabled, onChange }: ControlsProps) {
+  const isManual = settings.extractionMode === 'manual';
+
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-      <Slider
-        label="Sequence frames"
-        value={settings.sequenceCount}
-        min={1}
-        max={40}
-        disabled={disabled}
-        onChange={(v) => onChange({ sequenceCount: v })}
-      />
-      <Slider
-        label="Contact-sheet frames"
-        value={settings.sheetFrameCount}
-        min={2}
-        max={40}
-        disabled={disabled}
-        onChange={(v) => onChange({ sheetFrameCount: v })}
-      />
-      <Slider
-        label="Sheet columns"
-        value={settings.sheetColumns}
-        min={1}
-        max={8}
-        disabled={disabled}
-        onChange={(v) => onChange({ sheetColumns: v })}
-      />
-      <Slider
-        label="Tile max edge (px)"
-        value={settings.tileMaxEdge}
-        min={256}
-        max={1024}
-        step={64}
-        disabled={disabled}
-        onChange={(v) => onChange({ tileMaxEdge: v })}
-      />
-      <Slider
-        label="Max frames / sheet"
-        value={settings.maxFramesPerSheet}
-        min={4}
-        max={40}
-        disabled={disabled}
-        onChange={(v) => onChange({ maxFramesPerSheet: v })}
-      />
+    <div className="space-y-5">
       <label className="block space-y-1.5">
-        <span className="text-sm text-slate-300">Frame format</span>
+        <span className="text-sm text-slate-300">Extraction mode</span>
         <select
-          value={settings.format}
+          value={settings.extractionMode}
           disabled={disabled}
-          onChange={(e) => onChange({ format: e.target.value as ImageFormat })}
+          onChange={(e) => onChange({ extractionMode: e.target.value as 'even' | 'manual' })}
           className="w-full rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-slate-100 outline-none focus:border-accent"
         >
-          <option value="png">PNG (lossless)</option>
-          <option value="jpeg">JPEG (smaller)</option>
+          <option value="even">Even — Evenly-spaced timestamps</option>
+          <option value="manual">Manual — Select frames from player</option>
         </select>
       </label>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        {!isManual && (
+          <>
+            <Slider
+              label="Sequence frames"
+              value={settings.sequenceCount}
+              min={1}
+              max={40}
+              disabled={disabled}
+              onChange={(v) => onChange({ sequenceCount: v })}
+            />
+            <Slider
+              label="Contact-sheet frames"
+              value={settings.sheetFrameCount}
+              min={2}
+              max={40}
+              disabled={disabled}
+              onChange={(v) => onChange({ sheetFrameCount: v })}
+            />
+          </>
+        )}
+        <Slider
+          label="Sheet columns"
+          value={settings.sheetColumns}
+          min={1}
+          max={8}
+          disabled={disabled}
+          onChange={(v) => onChange({ sheetColumns: v })}
+        />
+        <Slider
+          label="Tile max edge (px)"
+          value={settings.tileMaxEdge}
+          min={256}
+          max={1024}
+          step={64}
+          disabled={disabled}
+          onChange={(v) => onChange({ tileMaxEdge: v })}
+        />
+        <Slider
+          label="Max frames / sheet"
+          value={settings.maxFramesPerSheet}
+          min={4}
+          max={40}
+          disabled={disabled}
+          onChange={(v) => onChange({ maxFramesPerSheet: v })}
+        />
+        <label className="block space-y-1.5">
+          <span className="text-sm text-slate-300">Frame format</span>
+          <select
+            value={settings.format}
+            disabled={disabled}
+            onChange={(e) => onChange({ format: e.target.value as ImageFormat })}
+            className="w-full rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-slate-100 outline-none focus:border-accent"
+          >
+            <option value="png">PNG (lossless)</option>
+            <option value="jpeg">JPEG (smaller)</option>
+          </select>
+        </label>
+      </div>
     </div>
   );
 }

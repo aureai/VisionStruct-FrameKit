@@ -17,6 +17,7 @@ import { Controls } from './components/Controls';
 import { ProgressBar } from './components/ProgressBar';
 import { PreviewGrid } from './components/PreviewGrid';
 import { GifPreview } from './components/GifPreview';
+import { ManualPicker } from './components/ManualPicker';
 import { useFrameKit } from './hooks/useFrameKit';
 import { isVideo } from './lib/fileType';
 import { DEFAULT_SETTINGS, type FrameKitSettings } from './types';
@@ -25,10 +26,17 @@ export default function App() {
   const { info, frames, sheets, progress, run, runFromImages, downloadZip } = useFrameKit();
   const [files, setFiles] = useState<File[]>([]);
   const [settings, setSettings] = useState<FrameKitSettings>(DEFAULT_SETTINGS);
+  const [selectedTimes, setSelectedTimes] = useState<number[]>([]);
 
   const busy = progress.phase === 'loading' || progress.phase === 'extracting' || progress.phase === 'composing' || progress.phase === 'packaging';
+  const isVideoFile = files.length === 1 && isVideo(files[0]);
+  const isManualMode = settings.extractionMode === 'manual';
 
-  const onFiles = useCallback((f: File[]) => setFiles(f), []);
+  const onFiles = useCallback((f: File[]) => {
+    setFiles(f);
+    setSelectedTimes([]); // Clear selected times when file changes
+  }, []);
+
   const patch = useCallback((p: Partial<FrameKitSettings>) => setSettings((s) => ({ ...s, ...p })), []);
 
   // Auto-set sheetFrameCount to match uploaded image count (image mode only)
@@ -41,11 +49,21 @@ export default function App() {
   const onGenerate = useCallback(() => {
     if (files.length === 0) return;
     if (files.length === 1 && isVideo(files[0])) {
-      run(files[0], settings);
+      run(files[0], settings, isManualMode ? selectedTimes : undefined);
     } else {
       runFromImages(files, settings);
     }
-  }, [files, settings, run, runFromImages]);
+  }, [files, settings, selectedTimes, isManualMode, run, runFromImages]);
+
+  const onAddTime = useCallback((time: number) => {
+    setSelectedTimes((prev) => [...prev, time]);
+  }, []);
+
+  const onRemoveTime = useCallback((time: number) => {
+    setSelectedTimes((prev) => prev.filter((t) => t !== time));
+  }, []);
+
+  const canGenerate = files.length > 0 && (!isManualMode || selectedTimes.length > 0);
 
   return (
     <div className="min-h-screen bg-ink text-slate-100">
@@ -67,10 +85,20 @@ export default function App() {
 
           <Controls settings={settings} disabled={busy} onChange={patch} />
 
+          {isVideoFile && isManualMode && files[0] && (
+            <ManualPicker
+              videoUrl={URL.createObjectURL(files[0])}
+              selectedTimes={selectedTimes}
+              disabled={busy}
+              onAddTime={onAddTime}
+              onRemoveTime={onRemoveTime}
+            />
+          )}
+
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={onGenerate}
-              disabled={files.length === 0 || busy}
+              disabled={!canGenerate || busy}
               className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Wand2 className="h-4 w-4" />

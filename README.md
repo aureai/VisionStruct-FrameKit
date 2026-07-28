@@ -27,6 +27,18 @@ npm run preview  # preview the production build
 
 No environment variables or server functions are required.
 
+## Extraction modes
+
+**Even (default)** — Automatically samples frames at evenly-spaced timestamps across the clip. Great for quick analysis of entire clips.
+
+**Manual** — Drop a video, scrub through the player, and save specific frames. You can:
+- Click **Save frame** to capture the current timestamp
+- Type a specific timestamp (in seconds) and click **Add**
+- Remove saved frames from the list
+- Max 40 frames
+
+Both modes produce the same ZIP structure with high-res frames + contact sheet.
+
 ## Output structure
 
 The **Download ZIP** button produces:
@@ -43,10 +55,12 @@ The **Download ZIP** button produces:
 
 ## Settings
 
-- **Sequence frames** (1–15) — frames in the motion folder.
-- **Contact-sheet frames** — how many frames pack into the sheet (auto-splits across multiple sheets past the per-sheet cap).
+- **Extraction mode** — Even (evenly-spaced) or Manual (user-selected timestamps).
+- **Sequence frames** (1–40, Even mode only) — frames in the motion folder.
+- **Contact-sheet frames** (Even mode only) — how many frames pack into the sheet (auto-splits across multiple sheets past the per-sheet cap).
 - **Sheet columns** — grid width.
 - **Tile max edge** — caps each tile's resolution so a busy sheet keeps per-frame detail instead of over-downsampling.
+- **Max frames / sheet** — split into multiple sheets past this cap.
 - **Frame format** — PNG (lossless) or JPEG (smaller).
 
 ## Codec support
@@ -64,7 +78,7 @@ src/
 │   ├── contactSheet.ts    # labeled grid composition + multi-sheet split
 │   └── packageZip.ts       # two-folder ZIP + manifest + download
 ├── hooks/useFrameKit.ts    # pipeline orchestration + URL lifecycle
-├── components/             # Dropzone, Controls, ProgressBar, PreviewGrid
+├── components/             # Dropzone, Controls, ProgressBar, PreviewGrid, ManualPicker
 ├── types.ts                # shared contracts + DEFAULT_SETTINGS
 └── App.tsx                 # UI shell
 ```

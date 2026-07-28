@@ -37,6 +37,8 @@ export interface ClipInfo {
 
 /** User-tunable settings that drive extraction and sheet generation. */
 export interface FrameKitSettings {
+  /** Extraction mode: 'even' for evenly-spaced, 'manual' for user-selected timestamps. */
+  extractionMode: 'even' | 'manual';
   /** Number of frames in the motion sequence (1–15). */
   sequenceCount: number;
   /** Number of frames packed into the contact sheet(s). */
@@ -72,6 +74,7 @@ export interface ProgressState {
 }
 
 export const DEFAULT_SETTINGS: FrameKitSettings = {
+  extractionMode: 'even',
   sequenceCount: 12,
   sheetFrameCount: 16,
   sheetColumns: 4,
