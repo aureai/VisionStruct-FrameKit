@@ -1,14 +1,9 @@
 /*
  * GifPreview.tsx
  * -----------------------------------------------------------------------------
- * Animates the extracted frame sequence as a looping canvas preview — visually
- * equivalent to a GIF. Renders immediately from the CapturedFrame object URLs
- * already in memory, so there is zero re-extraction cost on slider change.
+ * Animates the extracted frame sequence as a looping canvas preview.
  *
- * The animation fps is fixed at 4fps for short sequences and scales up slightly
- * for larger frame counts to keep the loop duration reasonable.
- *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-07-28 — PixelFold design system.
  * -----------------------------------------------------------------------------
  */
 
@@ -52,9 +47,9 @@ export function GifPreview({ frames }: GifPreviewProps) {
         if (img.complete) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fillStyle = 'rgba(10,15,13,0.7)';
           ctx.fillRect(8, canvas.height - 30, 90, 22);
-          ctx.fillStyle = '#e2e8f0';
+          ctx.fillStyle = '#eef5f1';
           ctx.font = `bold ${Math.max(11, Math.round(canvas.width / 80))}px monospace`;
           ctx.fillText(
             `${currentIndex + 1}/${frames.length}  ${frames[currentIndex].time.toFixed(2)}s`,
@@ -79,16 +74,16 @@ export function GifPreview({ frames }: GifPreviewProps) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+      <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">
         Sequence preview — {frames.length} frame{frames.length !== 1 ? 's' : ''}
       </p>
       <canvas
         ref={canvasRef}
-        className="w-full rounded-xl border border-edge bg-black object-contain"
+        className="w-full rounded-2xl border border-edge bg-ink object-contain"
         style={{ maxHeight: '280px', imageRendering: 'auto' }}
       />
-      <p className="text-xs text-slate-500">
-        Live loop · adjust the Sequence frames slider to see changes instantly
+      <p className="text-xs text-ink-soft">
+        Live loop · adjust Sequence frames to see changes instantly
       </p>
     </div>
   );

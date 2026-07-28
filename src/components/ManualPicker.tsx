@@ -155,15 +155,20 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
     return canvas.toDataURL('image/jpeg', 0.8);
   };
 
-  const seekAndCapture = async (time: number): Promise<string> => {
+  const seekTo = (time: number) => {
     const video = videoRef.current;
-    if (!video) return '';
+    if (!video || !isFinite(time) || time < 0 || (duration > 0 && time > duration)) return;
+    if (!video.paused) video.pause();
+    video.currentTime = time;
+    setCurrentTime(time);
+  };
 
-    const originalTime = video.currentTime;
-    const wasPlaying = !video.paused;
-    if (wasPlaying) video.pause();
-
-    await new Promise<void>((resolve, reject) => {
+  const waitForSeek = (video: HTMLVideoElement, time: number) =>
+    new Promise<void>((resolve, reject) => {
+      if (Math.abs(video.currentTime - time) < 0.001 && video.readyState >= 2) {
+        resolve();
+        return;
+      }
       const onSeeked = () => {
         cleanup();
         resolve();
@@ -174,7 +179,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
       };
       const timer = window.setTimeout(() => {
         cleanup();
-        resolve(); // best-effort fallback
+        resolve();
       }, 2000);
       const cleanup = () => {
         window.clearTimeout(timer);
@@ -191,10 +196,14 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
       }
     });
 
-    const thumbnailUrl = captureThumbnail();
-    video.currentTime = originalTime;
-    setCurrentTime(originalTime);
-    return thumbnailUrl;
+  const captureAtTime = async (time: number): Promise<string> => {
+    const video = videoRef.current;
+    if (!video) return '';
+    if (!video.paused) video.pause();
+
+    await waitForSeek(video, time);
+    setCurrentTime(time);
+    return captureThumbnail();
   };
 
   const handleSaveFrame = () => {
@@ -216,7 +225,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
     if (isDupe) return;
 
     try {
-      const thumbnailUrl = await seekAndCapture(time);
+      const thumbnailUrl = await captureAtTime(time);
       if (!thumbnailUrl) return;
       onAddFrame(time, thumbnailUrl);
       setTypedTime('');
@@ -225,10 +234,19 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
     }
   };
 
+  const handleTypedTimeChange = (value: string) => {
+    setTypedTime(value);
+    const time = parseFloat(value);
+    if (!isNaN(time) && time >= 0 && (duration <= 0 || time <= duration)) {
+      seekTo(time);
+    }
+  };
+
   const startEdit = (frame: SavedFrame) => {
     setEditingId(frame.id);
     setEditValue(frame.time.toFixed(3));
     setEditError(null);
+    seekTo(frame.time);
   };
 
   const saveEdit = async (frame: SavedFrame) => {
@@ -250,7 +268,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
     }
 
     try {
-      const thumbnailUrl = await seekAndCapture(newTime);
+      const thumbnailUrl = await captureAtTime(newTime);
       if (!thumbnailUrl) {
         setEditError('Could not capture frame');
         return;
@@ -273,13 +291,13 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
   const sortedFrames = [...savedFrames].sort((a, b) => a.time - b.time);
 
   return (
-    <div className="space-y-4 rounded-xl border border-edge bg-ink/40 p-4">
+    <div className="space-y-4 rounded-2xl border border-edge bg-mist/70 p-4">
       <canvas ref={canvasRef} className="hidden" />
       <div className="space-y-3">
         <video
           ref={videoRef}
           src={videoUrl}
-          className="w-full rounded-lg bg-black"
+          className="w-full rounded-2xl bg-black"
           playsInline
           muted
         />
@@ -289,7 +307,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
             type="button"
             onClick={togglePlay}
             disabled={disabled}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-leaf text-ink transition hover:bg-leaf-deep hover:text-paper disabled:cursor-not-allowed disabled:opacity-45"
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
@@ -302,15 +320,15 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
             value={currentTime}
             onChange={handleSeek}
             disabled={disabled || duration <= 0}
-            className="flex-1 accent-accent"
+            className="flex-1"
           />
 
-          <span className="font-mono text-sm text-slate-300">
+          <span className="font-mono text-sm tabular-nums text-ink-soft">
             {currentTime.toFixed(3)}s / {duration.toFixed(3)}s
           </span>
         </div>
 
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-soft">
           Keys: ←/→ frame · ↑/↓ 1s · Space play/pause
         </p>
       </div>
@@ -320,7 +338,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
           type="button"
           onClick={handleSaveFrame}
           disabled={disabled || savedFrames.length >= 40}
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-full bg-paper px-4 py-2 text-sm font-semibold text-ink transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
         >
           <Plus className="h-4 w-4" />
           Save frame
@@ -330,38 +348,41 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
           <input
             type="number"
             value={typedTime}
-            onChange={(e) => setTypedTime(e.target.value)}
+            onChange={(e) => handleTypedTimeChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleAddTyped();
+            }}
             placeholder="0.000"
             step={0.001}
             min={0}
             max={duration || undefined}
             disabled={disabled || savedFrames.length >= 40}
-            className="w-24 rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-slate-100 outline-none focus:border-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-24 rounded-xl border border-edge bg-ink px-3 py-2 text-sm text-paper outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf/40 disabled:cursor-not-allowed disabled:opacity-45"
           />
           <button
             type="button"
             onClick={() => void handleAddTyped()}
             disabled={disabled || savedFrames.length >= 40 || !typedTime}
-            className="inline-flex items-center gap-1 rounded-lg border border-edge px-3 py-2 text-sm font-medium text-slate-100 transition hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-full border border-edge px-3 py-2 text-sm font-semibold text-ink-soft transition hover:bg-paper/[0.06] hover:text-paper disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Plus className="h-3 w-3" />
             Add
           </button>
         </div>
 
-        <span className="ml-auto text-xs text-slate-400">
+        <span className="ml-auto text-xs text-ink-soft">
           {savedFrames.length} / 40 frames
         </span>
       </div>
 
       {sortedFrames.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-slate-300">Selected frames ({sortedFrames.length})</h3>
+          <h3 className="text-sm font-semibold text-paper">Selected frames ({sortedFrames.length})</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {sortedFrames.map((frame) => (
               <div
                 key={frame.id}
-                className="group relative overflow-hidden rounded-lg border border-edge bg-panel transition hover:border-accent/50"
+                className="group relative overflow-hidden rounded-xl border border-edge bg-ink/60 transition hover:border-leaf/40"
               >
                 {frame.thumbnailUrl ? (
                   <img
@@ -370,7 +391,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
                     className="aspect-video w-full object-cover"
                   />
                 ) : (
-                  <div className="flex aspect-video w-full items-center justify-center bg-ink text-xs text-slate-500">
+                  <div className="flex aspect-video w-full items-center justify-center bg-mist text-xs text-ink-soft">
                     No preview
                   </div>
                 )}
@@ -384,11 +405,15 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
                           onChange={(e) => {
                             setEditValue(e.target.value);
                             setEditError(null);
+                            const time = parseFloat(e.target.value);
+                            if (!isNaN(time) && time >= 0 && (duration <= 0 || time <= duration)) {
+                              seekTo(time);
+                            }
                           }}
                           step={0.001}
                           min={0}
                           max={duration || undefined}
-                          className="w-full rounded border border-edge bg-ink px-2 py-1 text-xs font-mono text-slate-100 outline-none focus:border-accent"
+                          className="w-full rounded-lg border border-edge bg-mist px-2 py-1 text-xs font-mono text-paper outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-leaf/40"
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') void saveEdit(frame);
@@ -398,14 +423,14 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
                         <button
                           type="button"
                           onClick={() => void saveEdit(frame)}
-                          className="text-green-400 transition hover:text-green-300"
+                          className="text-leaf transition hover:text-paper"
                         >
                           <Check className="h-3 w-3" />
                         </button>
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="text-slate-400 transition hover:text-slate-100"
+                          className="text-ink-soft transition hover:text-paper"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -414,7 +439,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
                     </div>
                   ) : (
                     <>
-                      <span className="flex-1 truncate font-mono text-xs text-slate-100">
+                      <span className="flex-1 truncate font-mono text-xs tabular-nums text-paper">
                         {frame.time.toFixed(3)}s
                       </span>
                       <div className="flex items-center gap-1">
@@ -422,7 +447,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
                           type="button"
                           onClick={() => startEdit(frame)}
                           disabled={disabled}
-                          className="text-slate-400 opacity-0 transition hover:text-accent group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="text-ink-soft opacity-0 transition hover:text-leaf group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-45"
                         >
                           <Edit2 className="h-3 w-3" />
                         </button>
@@ -430,7 +455,7 @@ export function ManualPicker({ videoUrl, savedFrames, disabled, onAddFrame, onUp
                           type="button"
                           onClick={() => onRemoveFrame(frame.id)}
                           disabled={disabled}
-                          className="text-slate-400 opacity-0 transition hover:text-red-400 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="text-ink-soft opacity-0 transition hover:text-red-400 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-45"
                         >
                           <X className="h-3 w-3" />
                         </button>

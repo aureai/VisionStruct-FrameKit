@@ -5,12 +5,12 @@
  * images (multiple). Surfaces the chosen File(s) to its parent and renders
  * the appropriate preview (video player or image count badge).
  *
- * Last updated: 2026-07-03 — Added multi-image input mode.
+ * Last updated: 2026-07-28 — PixelFold dark theme.
  * -----------------------------------------------------------------------------
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { UploadCloud, CheckCircle2, RefreshCw } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 import { isImage, isVideo } from '../lib/fileType';
 import type { ClipInfo } from '../types';
 
@@ -20,30 +20,40 @@ interface DropzoneProps {
   info: ClipInfo | null;
   files: File[];
   disabled?: boolean;
+  hideVideoPreview?: boolean;
   onFiles: (files: File[]) => void;
 }
 
-export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
+export function Dropzone({ info, files, disabled, hideVideoPreview, onFiles }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [dragging, setDragging] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [inputMode, setInputMode] = useState<'video' | 'images'>('video');
+  // Read directly from the file so the summary is available immediately —
+  // `info` only populates after Generate runs the extraction pipeline.
+  const [localVideoMeta, setLocalVideoMeta] = useState<{ width: number; height: number; durationSec: number } | null>(null);
 
   useEffect(() => {
     if (files.length === 0) {
       setPreviewUrl(null);
+      setLocalVideoMeta(null);
       return;
     }
     if (files.length === 1 && files[0].type.startsWith('video/')) {
       const url = URL.createObjectURL(files[0]);
       setPreviewUrl(url);
       setInputMode('video');
+      setLocalVideoMeta(null);
       return () => URL.revokeObjectURL(url);
     }
     setPreviewUrl(null);
+    setLocalVideoMeta(null);
     setInputMode('images');
   }, [files]);
+
+  const hasFile = files.length > 0;
+  const summary = info ?? (localVideoMeta ? { ...localVideoMeta, fileName: files[0]?.name ?? '' } : null);
 
   const handleFiles = useCallback(
     (fileList: FileList | null) => {
@@ -73,6 +83,24 @@ export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
 
   return (
     <div className="space-y-3">
+      {previewUrl && inputMode === 'video' && !hideVideoPreview && (
+        <video
+          ref={videoRef}
+          src={previewUrl}
+          controls
+          muted
+          playsInline
+          onLoadedMetadata={(e) => {
+            const v = e.currentTarget;
+            if (isFinite(v.duration) && v.duration > 0) {
+              setLocalVideoMeta({ width: v.videoWidth, height: v.videoHeight, durationSec: v.duration });
+            }
+          }}
+          className="w-full rounded-2xl border border-edge bg-black object-contain"
+          style={{ maxHeight: '280px' }}
+        />
+      )}
+
       <div
         role="button"
         tabIndex={0}
@@ -82,9 +110,14 @@ export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); if (!disabled) handleFiles(e.dataTransfer.files); }}
         className={[
-          'flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center transition',
-          disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-          dragging ? 'border-accent bg-accent/5' : info ? 'border-green-500/40 bg-green-500/5 hover:border-accent/60' : 'border-edge hover:border-accent/60',
+          'relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed text-center transition',
+          hasFile ? 'px-4 py-2.5' : 'min-h-[220px] px-6 py-8',
+          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+          dragging
+            ? 'border-leaf/45 bg-leaf/[0.08]'
+            : hasFile
+              ? 'border-leaf/35 bg-leaf/[0.06] hover:border-leaf/50'
+              : 'border-transparent bg-[linear-gradient(180deg,rgba(238,245,241,0.04),transparent)] hover:border-leaf/35 hover:bg-leaf/[0.06]',
         ].join(' ')}
       >
         <input
@@ -95,17 +128,21 @@ export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}
         />
-        {info ? (
-          <div className="flex w-full items-center gap-4">
-            <CheckCircle2 className="h-8 w-8 shrink-0 text-green-400" />
-            <div className="min-w-0 flex-1 text-left">
-              <p className="truncate font-medium text-slate-100">{info.fileName}</p>
-              <p className="mt-0.5 text-sm text-slate-400">
+        {hasFile ? (
+          <div className="flex w-full items-center gap-3 text-left">
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-leaf" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-paper">{summary?.fileName ?? files[0]?.name}</p>
+              <p className="text-xs text-ink-soft">
                 {inputMode === 'video' ? (
-                  <>
-                    {info.width}×{info.height} · {formatDuration(info.durationSec)}
-                    {files[0] ? ` · ${formatSize(files[0].size)}` : ''}
-                  </>
+                  summary ? (
+                    <>
+                      {summary.width}×{summary.height} · {formatDuration(summary.durationSec)}
+                      {files[0] ? ` · ${formatSize(files[0].size)}` : ''}
+                    </>
+                  ) : (
+                    'Loading…'
+                  )
                 ) : (
                   <>
                     {files.length} image{files.length !== 1 ? 's' : ''} · ready for contact sheet
@@ -113,31 +150,27 @@ export function Dropzone({ info, files, disabled, onFiles }: DropzoneProps) {
                 )}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 rounded-md border border-edge px-2.5 py-1 text-xs text-slate-400 hover:border-accent/60 hover:text-slate-200 transition">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-edge bg-mist px-2.5 py-1 text-xs font-semibold text-ink-soft transition hover:border-leaf/40 hover:text-paper">
               <RefreshCw className="h-3 w-3" />
               Replace
             </div>
           </div>
         ) : (
           <>
-            <UploadCloud className="h-9 w-9 text-slate-400" />
-            <p className="font-medium text-slate-100">Drop video or images, or click to browse</p>
-            <p className="text-sm text-slate-400">Video: MP4 · MOV · WebM | Images: JPG · PNG · WebP (multi-select)</p>
+            <div className="animate-bob mb-1 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-leaf to-leaf-deep text-ink shadow-sm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-7 w-7">
+                <path d="M12 16V4m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4" strokeLinecap="round" />
+              </svg>
+            </div>
+            <p className="text-[1.15rem] font-semibold text-paper">Drop video or images here</p>
+            <p className="text-[0.95rem] text-ink-soft">
+              or <span className="text-leaf underline underline-offset-[3px]">browse</span>
+              {' '}· MP4 · MOV · WebM · JPG · PNG · WebP
+            </p>
           </>
         )}
       </div>
-
-      {previewUrl && inputMode === 'video' && (
-        <video
-          ref={videoRef}
-          src={previewUrl}
-          controls
-          muted
-          playsInline
-          className="w-full rounded-xl border border-edge bg-black"
-          style={{ maxHeight: '240px' }}
-        />
-      )}
     </div>
   );
 }

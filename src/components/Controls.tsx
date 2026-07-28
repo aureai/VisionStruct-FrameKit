@@ -5,7 +5,7 @@
  * FrameKitSettings object and reports changes upward. Kept presentational; all
  * processing lives in the lib/ modules and the useFrameKit hook.
  *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-07-28 — PixelFold dark theme.
  * -----------------------------------------------------------------------------
  */
 
@@ -28,9 +28,9 @@ function Slider(props: {
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="flex justify-between text-sm text-slate-300">
+      <span className="flex justify-between text-[0.95rem] text-paper">
         <span>{props.label}</span>
-        <span className="font-mono text-slate-100">{props.value}</span>
+        <span className="font-semibold tabular-nums text-leaf">{props.value}</span>
       </span>
       <input
         type="range"
@@ -40,24 +40,26 @@ function Slider(props: {
         value={props.value}
         disabled={props.disabled}
         onChange={(e) => props.onChange(Number(e.target.value))}
-        className="w-full accent-accent"
       />
     </label>
   );
 }
 
+const selectClass =
+  'w-full rounded-xl border border-edge bg-ink px-3 py-2.5 text-[0.95rem] text-paper outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf/40 disabled:cursor-not-allowed disabled:opacity-45';
+
 export function Controls({ settings, disabled, onChange }: ControlsProps) {
   const isManual = settings.extractionMode === 'manual';
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 border-t border-edge pt-5">
       <label className="block space-y-1.5">
-        <span className="text-sm text-slate-300">Extraction mode</span>
+        <span className="text-[0.95rem] text-paper">Extraction mode</span>
         <select
           value={settings.extractionMode}
           disabled={disabled}
           onChange={(e) => onChange({ extractionMode: e.target.value as 'even' | 'manual' })}
-          className="w-full rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-slate-100 outline-none focus:border-accent"
+          className={selectClass}
         >
           <option value="even">Even — Evenly-spaced timestamps</option>
           <option value="manual">Manual — Select frames from player</option>
@@ -111,12 +113,12 @@ export function Controls({ settings, disabled, onChange }: ControlsProps) {
           onChange={(v) => onChange({ maxFramesPerSheet: v })}
         />
         <label className="block space-y-1.5">
-          <span className="text-sm text-slate-300">Frame format</span>
+          <span className="text-[0.95rem] text-paper">Frame format</span>
           <select
             value={settings.format}
             disabled={disabled}
             onChange={(e) => onChange({ format: e.target.value as ImageFormat })}
-            className="w-full rounded-lg border border-edge bg-ink px-3 py-2 text-sm text-slate-100 outline-none focus:border-accent"
+            className={selectClass}
           >
             <option value="png">PNG (lossless)</option>
             <option value="jpeg">JPEG (smaller)</option>

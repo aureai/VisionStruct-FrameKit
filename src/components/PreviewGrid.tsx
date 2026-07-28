@@ -1,11 +1,9 @@
 /*
  * PreviewGrid.tsx
  * -----------------------------------------------------------------------------
- * Read-only previews of the pipeline outputs: the extracted frame sequence
- * (thumbnail grid with frame index + timestamp) and the rendered contact
- * sheet(s). Image sources are object URLs owned by the useFrameKit hook.
+ * Read-only previews of the pipeline outputs: frame sequence + contact sheet(s).
  *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-07-28 — PixelFold dark theme.
  * -----------------------------------------------------------------------------
  */
 
@@ -22,16 +20,19 @@ export function PreviewGrid({ frames, sheets }: PreviewGridProps) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
           Frame sequence · {frames.length}
         </h2>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
           {frames.map((f) => (
-            <figure key={f.index} className="overflow-hidden rounded-lg border border-edge bg-ink">
+            <figure
+              key={f.index}
+              className="overflow-hidden rounded-xl border border-edge bg-mist/80"
+            >
               <img src={f.url} alt={`Frame ${f.index}`} className="aspect-video w-full object-cover" />
-              <figcaption className="flex justify-between px-2 py-1 text-[11px] text-slate-400">
-                <span className="text-slate-200">#{f.index}</span>
-                <span className="font-mono">{f.time.toFixed(2)}s</span>
+              <figcaption className="flex justify-between px-2 py-1.5 text-[11px] text-ink-soft">
+                <span className="font-semibold text-paper">#{f.index}</span>
+                <span className="font-mono tabular-nums">{f.time.toFixed(2)}s</span>
               </figcaption>
             </figure>
           ))}
@@ -39,7 +40,7 @@ export function PreviewGrid({ frames, sheets }: PreviewGridProps) {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-soft">
           Contact sheet{sheets.length > 1 ? `s · ${sheets.length}` : ''}
         </h2>
         <div className="space-y-4">
@@ -48,7 +49,7 @@ export function PreviewGrid({ frames, sheets }: PreviewGridProps) {
               key={s.index}
               src={s.url}
               alt={`Contact sheet ${s.index}`}
-              className="w-full rounded-xl border border-edge"
+              className="w-full rounded-2xl border border-edge shadow-elevated"
             />
           ))}
         </div>

@@ -2,10 +2,8 @@
  * ProgressBar.tsx
  * -----------------------------------------------------------------------------
  * Thin status/progress indicator driven by the pipeline's ProgressState.
- * Shows a determinate bar while extracting frames and a message line for every
- * phase, including a distinct error style.
  *
- * Last updated: 2026-06-29 — Initial creation.
+ * Last updated: 2026-07-28 — PixelFold dark theme.
  * -----------------------------------------------------------------------------
  */
 
@@ -25,16 +23,16 @@ export function ProgressBar({ progress }: { progress: ProgressState }) {
         {isError ? (
           <AlertCircle className="h-4 w-4 text-red-400" />
         ) : isDone ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <CheckCircle2 className="h-4 w-4 text-leaf" />
         ) : (
-          <Loader2 className="h-4 w-4 animate-spin text-accent" />
+          <Loader2 className="h-4 w-4 animate-spin text-leaf" />
         )}
-        <span className={isError ? 'text-red-300' : 'text-slate-300'}>{progress.message}</span>
+        <span className={isError ? 'text-red-400' : 'text-ink-soft'}>{progress.message}</span>
       </div>
       {!isError && (
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-edge">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-mist">
           <div
-            className="h-full rounded-full bg-accent transition-all"
+            className="h-full rounded-full bg-leaf transition-all"
             style={{ width: `${pct}%` }}
           />
         </div>

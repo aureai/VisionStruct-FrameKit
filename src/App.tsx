@@ -6,12 +6,12 @@
  * owns the editable settings state. Composition only — no processing logic
  * lives here.
  *
- * Last updated: 2026-07-03 — Auto-set sheetFrameCount when images are loaded.
+ * Last updated: 2026-07-28 — PixelFold design system, dark theme default.
  * -----------------------------------------------------------------------------
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Download, Sparkles, Wand2 } from 'lucide-react';
+import { Download, Wand2 } from 'lucide-react';
 import { Dropzone } from './components/Dropzone';
 import { Controls } from './components/Controls';
 import { ProgressBar } from './components/ProgressBar';
@@ -35,13 +35,11 @@ export default function App() {
 
   const onFiles = useCallback((f: File[]) => {
     setFiles(f);
-    setSavedFrames([]); // Clear saved frames when file changes
+    setSavedFrames([]);
   }, []);
 
   const patch = useCallback((p: Partial<FrameKitSettings>) => setSettings((s) => ({ ...s, ...p })), []);
 
-  // Stable blob URL for ManualPicker — create once per file, revoke on change/unmount.
-  // (Calling createObjectURL inline in JSX leaked a URL on every render.)
   useEffect(() => {
     if (!isVideoFile || !isManualMode || !files[0]) {
       setManualVideoUrl(null);
@@ -52,7 +50,6 @@ export default function App() {
     return () => URL.revokeObjectURL(url);
   }, [files, isVideoFile, isManualMode]);
 
-  // Auto-set sheetFrameCount to match uploaded image count (image mode only)
   useEffect(() => {
     if (files.length > 0 && !isVideo(files[0])) {
       setSettings((s) => ({ ...s, sheetFrameCount: files.length }));
@@ -89,24 +86,28 @@ export default function App() {
   const canGenerate = files.length > 0 && (!isManualMode || savedFrames.length > 0);
 
   return (
-    <div className="min-h-screen bg-ink text-slate-100">
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <header className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15">
-            <Sparkles className="h-5 w-5 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold">VisionStruct FrameKit</h1>
-            <p className="text-sm text-slate-400">
-              Turn short clips into frame sequences + a labeled contact sheet for AI analysis.
-            </p>
-          </div>
+    <div className="min-h-screen font-body text-paper">
+      <div className="mx-auto max-w-[720px] px-5 py-10 sm:px-6 sm:py-12 animate-rise">
+        <header className="mb-8">
+          <p className="mb-3 inline-block rounded-full border border-leaf/25 bg-leaf/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.06em] text-leaf">
+            100% in your browser · Nothing is uploaded
+          </p>
+          <h1 className="font-display text-[clamp(2.6rem,7vw,3.8rem)] font-bold leading-[0.95] tracking-[-0.03em] text-paper">
+            FrameKit
+          </h1>
+          <p className="mt-3 max-w-[48ch] text-[1.08rem] leading-relaxed text-ink-soft">
+            Turn short clips into <em className="not-italic font-semibold text-leaf">frame sequences</em> + a labeled contact sheet for AI analysis.
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Capabilities">
+            <li className="rounded-lg border border-edge bg-mist/80 px-2.5 py-1 text-[0.74rem] font-bold tracking-wide text-ink-soft">Even</li>
+            <li className="rounded-lg border border-edge bg-mist/80 px-2.5 py-1 text-[0.74rem] font-bold tracking-wide text-ink-soft">Manual</li>
+            <li className="rounded-lg border border-edge bg-mist/80 px-2.5 py-1 text-[0.74rem] font-bold tracking-wide text-ink-soft">Contact sheet</li>
+            <li className="rounded-lg border border-gold/40 bg-gold/15 px-2.5 py-1 text-[0.74rem] font-bold tracking-wide text-gold">ZIP</li>
+          </ul>
         </header>
 
-        <div className="space-y-6 rounded-2xl border border-edge bg-panel p-5 sm:p-6">
-          <Dropzone info={info} files={files} disabled={busy} onFiles={onFiles} />
-
-          <Controls settings={settings} disabled={busy} onChange={patch} />
+        <section className="space-y-6 overflow-hidden rounded-panel border border-edge bg-panel p-5 shadow-elevated sm:p-6">
+          <Dropzone info={info} files={files} disabled={busy} hideVideoPreview={isVideoFile && isManualMode} onFiles={onFiles} />
 
           {isVideoFile && isManualMode && manualVideoUrl && (
             <ManualPicker
@@ -119,19 +120,23 @@ export default function App() {
             />
           )}
 
-          <div className="flex flex-wrap items-center gap-3">
+          <Controls settings={settings} disabled={busy} onChange={patch} />
+
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
+              type="button"
               onClick={onGenerate}
               disabled={!canGenerate || busy}
-              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-w-[160px] flex-1 items-center justify-center gap-2 rounded-full bg-paper px-5 py-3 text-[0.95rem] font-semibold text-ink transition hover:-translate-y-px hover:bg-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
             >
               <Wand2 className="h-4 w-4" />
               Generate
             </button>
             <button
+              type="button"
               onClick={downloadZip}
               disabled={frames.length === 0 || busy}
-              className="inline-flex items-center gap-2 rounded-lg border border-edge px-4 py-2 text-sm font-medium text-slate-100 transition hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-edge bg-transparent px-5 py-3 text-[0.95rem] font-semibold text-ink-soft transition hover:-translate-y-px hover:bg-paper/[0.06] hover:text-paper disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
             >
               <Download className="h-4 w-4" />
               Download ZIP
@@ -139,19 +144,19 @@ export default function App() {
           </div>
 
           <ProgressBar progress={progress} />
-        </div>
+        </section>
 
         {frames.length > 0 && (
-          <div className="mt-6 rounded-2xl border border-edge bg-panel p-5 sm:p-6">
+          <section className="mt-6 space-y-4 overflow-hidden rounded-panel border border-edge bg-panel p-5 shadow-elevated sm:p-6">
             <GifPreview frames={frames} />
-          </div>
+          </section>
         )}
 
         <div className="mt-8">
           <PreviewGrid frames={frames} sheets={sheets} />
         </div>
 
-        <footer className="mt-12 text-center text-xs text-slate-500">
+        <footer className="mt-12 text-center text-xs text-ink-soft/80">
           Runs entirely in your browser — clips are never uploaded. MP4 · MOV · WebM supported.
         </footer>
       </div>
